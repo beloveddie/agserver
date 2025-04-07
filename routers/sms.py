@@ -25,7 +25,12 @@ async def sms_incoming(request: Request, From: str = Form(...), Body: str = Form
         expert = route_to_expert(Body, user_language)
         if expert:
             reply += f"\nPlease expect a call or SMS shortly from {expert['name']}."
-            send_sms_to_expert(expert, Body)
+            send_sms_to_expert(
+                    expert=expert,
+                    user_question=Body,
+                    user_phone=From,
+                    user_language=user_language
+                )
 
     # Create TwiML response
     twiml = MessagingResponse()

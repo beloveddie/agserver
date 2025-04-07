@@ -12,12 +12,13 @@ TWILIO_PHONE = os.getenv("TWILIO_PHONE_NUMBER")
 
 twilio_client = Client(TWILIO_SID, TWILIO_AUTH)
 
-def send_sms_to_expert(expert: dict, user_question: str):
+def send_sms_to_expert(expert: dict, user_question: str, user_phone: str, user_language: str = "English"):
     message = (
         f"AgServer Alert 🚜\n"
-        f"Hi {expert['name']}, a farmer needs help.\n"
+        f"Hi {expert['name']}, a farmer needs your help.\n"
         f"Query: {user_question[:100]}...\n"
-        f"Please call back or reply if needed."
+        f"Language: {user_language}\n"
+        f"Contact Farmer: {user_phone}"
     )
 
     try:
