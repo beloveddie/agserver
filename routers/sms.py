@@ -5,6 +5,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 
 from services.openai_service import get_chat_response
 from services.escalation_service import check_if_escalation_needed, route_to_expert
+from services.twilio_service import send_sms_to_expert
 from utils.language_utils import detect_language
 
 router = APIRouter()
@@ -24,6 +25,7 @@ async def sms_incoming(request: Request, From: str = Form(...), Body: str = Form
         expert = route_to_expert(Body, user_language)
         if expert:
             reply += f"\nPlease expect a call or SMS shortly from {expert['name']}."
+            send_sms_to_expert(expert, Body)
 
     # Create TwiML response
     twiml = MessagingResponse()
