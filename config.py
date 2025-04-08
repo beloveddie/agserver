@@ -2,10 +2,19 @@
 import os
 from dotenv import load_dotenv
 
+import os
+from pymongo import MongoClient
+
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PORT = int(os.getenv("PORT", 5050))
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB = "agserver"
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client[MONGO_DB]
+
 
 SYSTEM_MESSAGE: str = (
     """You are AgServer, an agricultural knowledge assistant for smallholder farmers in Nigeria.

@@ -10,6 +10,10 @@ from twilio.twiml.voice_response import VoiceResponse, Connect
 from config import OPENAI_API_KEY, SYSTEM_MESSAGE, VOICE, LOG_EVENT_TYPES, SHOW_TIMING_MATH
 from services.openai_service import initialize_session
 
+from datetime import datetime
+from config import db
+
+
 router = APIRouter()
 
 @router.get("/", response_class=JSONResponse)
@@ -42,6 +46,12 @@ async def handle_media_stream(websocket: WebSocket):
     print(f"🔗 Voice stream initiated by: {caller}")
     print("Client connected")
     await websocket.accept()
+
+    session_log = {
+    "caller": caller,
+    "started_at": datetime.utcnow(),
+    "escalated": False}
+
 
     exit_signal = {"stop": False}  # ✅ Shared flag for graceful shutdown
 
@@ -121,6 +131,7 @@ async def handle_media_stream(websocket: WebSocket):
                         for block in content_blocks:
                             if block.get("type") == "input_text":
                                 user_transcript = block["text"]
+                                session_log["user_transcript"] = user_transcript
                                 print(f"🎙️ User said: {user_transcript}")
 
                     if response['type'] in LOG_EVENT_TYPES:
@@ -155,6 +166,7 @@ async def handle_media_stream(websocket: WebSocket):
                                 for item in content_items:
                                     if item.get("type") == "audio":
                                         ai_reply = item.get("transcript", "")
+                                        session_log["ai_response"] = ai_reply
                                         break
                         except Exception as e:
                             print("⚠️ Failed to parse assistant response:", e)
@@ -168,6 +180,15 @@ async def handle_media_stream(websocket: WebSocket):
 
                             if expert:
                                 print(f"👨🏾‍🌾 Notifying expert: {expert['name']}")
+
+                                # ✅ Update session log with escalation metadata
+                                session_log["escalated"] = True
+                                session_log["language"] = user_language
+                                session_log["expert"] = {
+                                    "name": expert["name"],
+                                    "phone": expert["phone"]
+                                }
+
                                 send_sms_to_expert(
                                     expert=expert,
                                     user_question=user_transcript,
@@ -228,6 +249,16 @@ async def handle_media_stream(websocket: WebSocket):
                                 print(f"⏳ Waiting {safe_wait_time:.2f}s to let Twilio finish playback...")
                                 await asyncio.sleep(safe_wait_time)
 
+                                # ✅ Log session playback & end time
+                                session_log["audio_playback_ms"] = total_playback_duration_ms
+                                session_log["ended_at"] = datetime.utcnow()
+
+                                # 🧠 Save to MongoDB (wrapped for production safety)
+                                try:
+                                    db.calls.insert_one(session_log)
+                                    print("📦 Session logged to MongoDB.")
+                                except Exception as e:
+                                    print(f"⚠️ Failed to save session log: {e}")
 
 
                                 # ✅ Now gracefully shutdown
@@ -235,8 +266,6 @@ async def handle_media_stream(websocket: WebSocket):
                                 await openai_ws.send(json.dumps({"type": "session.close"}))
                                 await websocket.close()
                                 print("🔒 Session closed and WebSocket disconnected.")
-
-
                             else:
                                 print("⚠️ No expert available for that language.")
                         else:

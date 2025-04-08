@@ -3,6 +3,8 @@
 from twilio.rest import Client
 import os
 from dotenv import load_dotenv
+from datetime import datetime
+from config import db
 
 load_dotenv()
 
@@ -28,5 +30,21 @@ def send_sms_to_expert(expert: dict, user_question: str, user_phone: str, user_l
             body=message
         )
         print(f"✅ SMS sent to expert {expert['name']} at {expert['phone']}")
-    except Exception as e:
-        print(f"❌ Failed to send SMS to expert: {e}")
+
+        # ✅ Log the SMS send in MongoDB
+        try:
+            db.sms_logs.insert_one({
+                "to": expert["phone"],
+                "expert_name": expert["name"],
+                "user_phone": user_phone,
+                "user_question": user_question,
+                "language": user_language,
+                "timestamp": datetime.utcnow(),
+                "status": "sent"
+            })
+            print(f"📬 SMS log for {expert['name']} saved to MongoDB.")
+        except Exception as log_err:
+            print(f"⚠️ SMS sent, but failed to log to DB: {log_err}")
+
+    except Exception as send_err:
+        print(f"❌ Failed to send SMS to expert: {send_err}")
