@@ -2,19 +2,21 @@
 
 from db.crud import get_available_expert
 
-def check_if_escalation_needed(ai_response: str, user_message: str) -> bool:
+def check_if_escalation_needed(ai_response: str = "", user_message: str = "") -> bool:
     trigger_phrases = [
-        "let me connect you", "do you want to speak to a human",
-        "connecting you now", "talk to a farming expert",
-        "i recommend speaking with a human"
+        "connecting to human expert now",
+        'connecting you to a human expert now'
     ]
     user_triggers = [
         "i want to talk to a human", "connect me to an expert",
         "can i talk to someone", "talk to person", "human being", "call someone"
     ]
+    # return (
+    #     any(p in ai_response.lower() for p in trigger_phrases) or
+    #     any(p in user_message.lower() for p in user_triggers)
+    # )
     return (
-        any(p in ai_response.lower() for p in trigger_phrases) or
-        any(p in user_message.lower() for p in user_triggers)
+        any(p in ai_response.lower() for p in trigger_phrases)
     )
 
 
