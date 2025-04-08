@@ -31,3 +31,5 @@ yarl==1.12.1
 openai
 audioop-lts
 pymongo
+gunicorn
+uvicorn[standard]
