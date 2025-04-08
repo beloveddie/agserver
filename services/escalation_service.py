@@ -5,7 +5,10 @@ from db.crud import get_available_expert
 def check_if_escalation_needed(ai_response: str = "", user_message: str = "") -> bool:
     trigger_phrases = [
         "connecting to human expert now",
-        'connecting you to a human expert now'
+        "connecting you to a human expert now",
+        "human expert now.",
+        "to a human expert now.",
+        "with a human expert now.",
     ]
     user_triggers = [
         "i want to talk to a human", "connect me to an expert",

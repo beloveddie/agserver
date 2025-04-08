@@ -1,19 +1,21 @@
 # db/crud.py
 
-from db.database import experts_db
+from config import db
 
 def get_available_expert(language: str = None):
-    fallback = None
+    try:
+        query = {"available": True}
+        experts = list(db.experts.find(query))
 
-    for expert in experts_db:
-        if expert.get("available"):
-            # Perfect match on language
+        fallback = None
+        for expert in experts:
             if language and language in expert.get("languages", []):
                 return expert
-            
-            # Save this in case we need fallback
             if fallback is None:
                 fallback = expert
 
-    # If no language-specific match, return any available expert
-    return fallback
+        return fallback
+
+    except Exception as e:
+        print(f"❌ Error fetching expert from DB: {e}")
+        return None

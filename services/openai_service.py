@@ -60,5 +60,4 @@ def get_chat_response(user_message: str) -> str:
         ],
         temperature=0.7,
     )
-    print(response.choices[0].message.content)
-    return f"{response.choices[0].message.content[:100]}..."
+    return f"{response.choices[0].message.content}"

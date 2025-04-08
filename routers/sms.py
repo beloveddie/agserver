@@ -19,21 +19,36 @@ async def sms_incoming(request: Request, From: str = Form(...), Body: str = Form
 
     # Use OpenAI to get a response
     reply = get_chat_response(Body)
+    print(f"🤖 Assistant reply: {reply}")
 
     # Check if escalation is needed
-    if check_if_escalation_needed(reply, Body):
+    if check_if_escalation_needed(reply):
+        print("🚨 Escalation detected for incoming SMS.")
+
         expert = route_to_expert(Body, user_language)
         if expert:
-            reply += f"\nPlease expect a call or SMS shortly from {expert['name']}."
+            print(f"👨🏾‍🌾 Routing SMS query to expert: {expert['name']} ({expert['phone']})")
+
             send_sms_to_expert(
-                    expert=expert,
-                    user_question=Body,
-                    user_phone=From,
-                    user_language=user_language
-                )
+                expert=expert,
+                user_question=Body,
+                user_phone=From,
+                user_language=user_language
+            )
+
+            reply += f"\n📲 Please expect a call or SMS shortly from {expert['name']}."
+            print(reply)
+        else:
+            print("⚠️ No expert available for escalation via SMS.")
+            reply += "\nSorry, no available expert found at the moment. We'll get back to you soon."
+            print(reply)
+
+    else:
+        print("✅ No escalation needed for SMS message.")
 
     # Create TwiML response
     twiml = MessagingResponse()
     twiml.message(reply)
 
+    print(f"📤 Responding to user {From} via SMS.")
     return HTMLResponse(content=str(twiml), media_type="application/xml")
