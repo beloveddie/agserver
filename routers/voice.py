@@ -158,22 +158,21 @@ async def handle_media_stream(websocket: WebSocket):
 
                     if response.get('type') == 'response.done':
                         print("🧠 Parsing assistant response...")
-                        ai_reply = ""
+                        initial_ai_reply = ""
                         try:
                             output = response.get("response", {}).get("output", [])
                             if output:
                                 content_items = output[0].get("content", [])
                                 for item in content_items:
                                     if item.get("type") == "audio":
-                                        ai_reply = item.get("transcript", "")
-                                        session_log["ai_response"] = ai_reply
+                                        initial_ai_reply = item.get("transcript", "")
                                         break
                         except Exception as e:
                             print("⚠️ Failed to parse assistant response:", e)
 
-                        print(f"🧠 Assistant said: {ai_reply}")
+                        print(f"🧠 Initial AI response: {initial_ai_reply}")
 
-                        if check_if_escalation_needed(ai_reply):
+                        if check_if_escalation_needed(initial_ai_reply):
                             print("🚨 Escalation needed.")
                             user_language = detect_language(user_transcript)
                             expert = route_to_expert(user_transcript, user_language)
@@ -198,6 +197,10 @@ async def handle_media_stream(websocket: WebSocket):
                                     )
 
                                     confirmation_text = get_escalation_confirmation(user_language, expert["name"])
+                                    
+                                    # Update the final response that will be saved to DB
+                                    final_response = f"{initial_ai_reply}\n\n{confirmation_text}"
+                                    session_log["ai_response"] = final_response
 
                                     await openai_ws.send(json.dumps({
                                         "type": "conversation.item.create",
@@ -269,21 +272,18 @@ async def handle_media_stream(websocket: WebSocket):
                                     print("🔒 Session closed and WebSocket disconnected.")
                                 except Exception as e:
                                     print(f"⚠️ Error during escalation process: {e}")
-                                    # Still log the call even if escalation fails
                                     session_log["escalation_error"] = str(e)
+                                    # Save the initial response if escalation fails
+                                    session_log["ai_response"] = initial_ai_reply
                             else:
                                 print("⚠️ No expert available for that language.")
                                 session_log["escalation_error"] = "No expert available"
+                                # Save the initial response if no expert is available
+                                session_log["ai_response"] = initial_ai_reply
                         else:
                             print("✅ No escalation needed.")
-                            
-                        # Always log the call to MongoDB, regardless of escalation status
-                        try:
-                            session_log["ended_at"] = datetime.utcnow()
-                            db.calls.insert_one(session_log)
-                            print("📦 Session logged to MongoDB.")
-                        except Exception as e:
-                            print(f"⚠️ Failed to save session log: {e}")
+                            # Save the initial response if no escalation is needed
+                            session_log["ai_response"] = initial_ai_reply
 
             except Exception as e:
                 print(f"❌ Error in send_to_twilio: {e}")
