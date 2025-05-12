@@ -120,7 +120,7 @@ async def handle_media_stream(websocket: WebSocket):
                     return f"I don send your question give {expert_name}. E go call or message you soon."
                 elif language == "Igbo":
                     return f"A zịrila {expert_name} ozi gbasara ajụjụ gị. Ọ ga-akpọ gị ma ọ bụ zipu ozi n'oge na-adịghị anya."
-                return f"Alright! I’ve sent your question to {expert_name}. They’ll reach out to you soon."
+                return f"Alright! I've sent your question to {expert_name}. They'll reach out to you soon."
 
             try:
                 async for openai_message in openai_ws:
@@ -189,90 +189,112 @@ async def handle_media_stream(websocket: WebSocket):
                                     "phone": expert["phone"]
                                 }
 
-                                send_sms_to_expert(
-                                    expert=expert,
-                                    user_question=user_transcript,
-                                    user_phone=caller,
-                                    user_language=user_language
-                                )
+                                try:
+                                    send_sms_to_expert(
+                                        expert=expert,
+                                        user_question=user_transcript,
+                                        user_phone=caller,
+                                        user_language=user_language
+                                    )
 
-                                confirmation_text = get_escalation_confirmation(user_language, expert["name"])
+                                    confirmation_text = get_escalation_confirmation(user_language, expert["name"])
 
-                                await openai_ws.send(json.dumps({
-                                    "type": "conversation.item.create",
-                                    "item": {
-                                        "type": "message",
-                                        "role": "assistant",
-                                        "content": [{"type": "text", "text": confirmation_text}]
-                                    }}))
-                                await openai_ws.send(json.dumps({"type": "response.create"}))
-                                print("✅ Confirmation message sent to user.")
+                                    await openai_ws.send(json.dumps({
+                                        "type": "conversation.item.create",
+                                        "item": {
+                                            "type": "message",
+                                            "role": "assistant",
+                                            "content": [{"type": "text", "text": confirmation_text}]
+                                        }}))
+                                    await openai_ws.send(json.dumps({"type": "response.create"}))
+                                    print("✅ Confirmation message sent to user.")
 
-                                # 🕓 Wait for response.done after the AI finishes speaking
-                                import audioop
+                                    # 🕓 Wait for response.done after the AI finishes speaking
+                                    import audioop
 
-                                # 🧠 Utility: Calculate audio duration (G711 µ-law @ 8000Hz = 8kbps = 1 byte per ms)
-                                def calculate_ulaw_duration_ms(decoded_audio: bytes) -> int:
-                                    return len(decoded_audio)  # 1 byte ≈ 1 ms for G.711 u-law
+                                    # 🧠 Utility: Calculate audio duration (G711 µ-law @ 8000Hz = 8kbps = 1 byte per ms)
+                                    def calculate_ulaw_duration_ms(decoded_audio: bytes) -> int:
+                                        return len(decoded_audio)  # 1 byte ≈ 1 ms for G.711 u-law
 
-                                # ⏳ Track playback time
-                                total_playback_duration_ms = 0
+                                    # ⏳ Track playback time
+                                    total_playback_duration_ms = 0
 
-                                # 🕓 Wait for OpenAI to finish, while sending last bits to Twilio
-                                while True:
-                                    try:
-                                        openai_followup = await openai_ws.recv()
-                                        parsed = json.loads(openai_followup)
+                                    # 🕓 Wait for OpenAI to finish, while sending last bits to Twilio
+                                    while True:
+                                        try:
+                                            openai_followup = await openai_ws.recv()
+                                            parsed = json.loads(openai_followup)
 
-                                        if parsed.get("type") == "response.audio.delta" and "delta" in parsed:
-                                            raw_bytes = base64.b64decode(parsed['delta'])
-                                            duration_ms = calculate_ulaw_duration_ms(raw_bytes)
-                                            total_playback_duration_ms += duration_ms
+                                            if parsed.get("type") == "response.audio.delta" and "delta" in parsed:
+                                                raw_bytes = base64.b64decode(parsed['delta'])
+                                                duration_ms = calculate_ulaw_duration_ms(raw_bytes)
+                                                total_playback_duration_ms += duration_ms
 
-                                            encoded_payload = base64.b64encode(raw_bytes).decode("utf-8")
-                                            await websocket.send_json({
-                                                "event": "media",
-                                                "streamSid": stream_sid,
-                                                "media": {"payload": encoded_payload}
-                                            })
+                                                encoded_payload = base64.b64encode(raw_bytes).decode("utf-8")
+                                                await websocket.send_json({
+                                                    "event": "media",
+                                                    "streamSid": stream_sid,
+                                                    "media": {"payload": encoded_payload}
+                                                })
 
-                                        elif parsed.get("type") == "response.done":
-                                            print(f"✅ Assistant finished speaking. Estimated playback: {total_playback_duration_ms}ms")
+                                            elif parsed.get("type") == "response.done":
+                                                print(f"✅ Assistant finished speaking. Estimated playback: {total_playback_duration_ms}ms")
+                                                break
+
+                                        except Exception as e:
+                                            print("⚠️ Error while streaming final audio to Twilio:", e)
                                             break
 
+                                    # ⏱️ Convert to seconds and wait a bit more for safe playback buffer
+                                    safe_wait_time = (total_playback_duration_ms / 1000) + 0.8  # 0.8s buffer
+                                    print(f"⏳ Waiting {safe_wait_time:.2f}s to let Twilio finish playback...")
+                                    await asyncio.sleep(safe_wait_time)
+
+                                    # ✅ Log session playback & end time
+                                    session_log["audio_playback_ms"] = total_playback_duration_ms
+                                    session_log["ended_at"] = datetime.utcnow()
+
+                                    # 🧠 Save to MongoDB (wrapped for production safety)
+                                    try:
+                                        db.calls.insert_one(session_log)
+                                        print("📦 Session logged to MongoDB.")
                                     except Exception as e:
-                                        print("⚠️ Error while streaming final audio to Twilio:", e)
-                                        break
+                                        print(f"⚠️ Failed to save session log: {e}")
 
-                                # ⏱️ Convert to seconds and wait a bit more for safe playback buffer
-                                safe_wait_time = (total_playback_duration_ms / 1000) + 0.8  # 0.8s buffer
-                                print(f"⏳ Waiting {safe_wait_time:.2f}s to let Twilio finish playback...")
-                                await asyncio.sleep(safe_wait_time)
 
-                                # ✅ Log session playback & end time
-                                session_log["audio_playback_ms"] = total_playback_duration_ms
-                                session_log["ended_at"] = datetime.utcnow()
-
-                                # 🧠 Save to MongoDB (wrapped for production safety)
-                                try:
-                                    db.calls.insert_one(session_log)
-                                    print("📦 Session logged to MongoDB.")
+                                    # ✅ Now gracefully shutdown
+                                    exit_signal["stop"] = True
+                                    await openai_ws.send(json.dumps({"type": "session.close"}))
+                                    await websocket.close()
+                                    print("🔒 Session closed and WebSocket disconnected.")
                                 except Exception as e:
-                                    print(f"⚠️ Failed to save session log: {e}")
-
-
-                                # ✅ Now gracefully shutdown
-                                exit_signal["stop"] = True
-                                await openai_ws.send(json.dumps({"type": "session.close"}))
-                                await websocket.close()
-                                print("🔒 Session closed and WebSocket disconnected.")
+                                    print(f"⚠️ Error during escalation process: {e}")
+                                    # Still log the call even if escalation fails
+                                    session_log["escalation_error"] = str(e)
                             else:
                                 print("⚠️ No expert available for that language.")
+                                session_log["escalation_error"] = "No expert available"
                         else:
                             print("✅ No escalation needed.")
+                            
+                        # Always log the call to MongoDB, regardless of escalation status
+                        try:
+                            session_log["ended_at"] = datetime.utcnow()
+                            db.calls.insert_one(session_log)
+                            print("📦 Session logged to MongoDB.")
+                        except Exception as e:
+                            print(f"⚠️ Failed to save session log: {e}")
 
             except Exception as e:
                 print(f"❌ Error in send_to_twilio: {e}")
+                # Try to log the call even if there's an error
+                try:
+                    session_log["error"] = str(e)
+                    session_log["ended_at"] = datetime.utcnow()
+                    db.calls.insert_one(session_log)
+                    print("📦 Session logged to MongoDB despite error.")
+                except Exception as db_error:
+                    print(f"⚠️ Failed to save error session log: {db_error}")
 
         async def handle_speech_started_event():
             nonlocal response_start_timestamp_twilio, last_assistant_item
