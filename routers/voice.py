@@ -282,15 +282,14 @@ async def handle_media_stream(websocket: WebSocket):
                                 session_log["ai_response"] = initial_ai_reply
                         else:
                             print("✅ No escalation needed.")
-                            
-                        # Always log the call to MongoDB, regardless of escalation status
-                        try:
-                            session_log["ai_response"] = item.get("transcript", "")
-                            session_log["ended_at"] = datetime.utcnow()
-                            db.calls.insert_one(session_log)
-                            print("📦 Session logged to MongoDB.")
-                        except Exception as e:
-                            print(f"⚠️ Failed to save session log: {e}")
+                            # Save the session log for non-escalation case
+                            try:
+                                session_log["ai_response"] = initial_ai_reply
+                                session_log["ended_at"] = datetime.utcnow()
+                                db.calls.insert_one(session_log)
+                                print("📦 Session logged to MongoDB.")
+                            except Exception as e:
+                                print(f"⚠️ Failed to save session log: {e}")
 
             except Exception as e:
                 print(f"❌ Error in send_to_twilio: {e}")
