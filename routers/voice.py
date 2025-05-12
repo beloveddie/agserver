@@ -285,6 +285,7 @@ async def handle_media_stream(websocket: WebSocket):
                             
                         # Always log the call to MongoDB, regardless of escalation status
                         try:
+                            session_log["ai_response"] = initial_ai_reply
                             session_log["ended_at"] = datetime.utcnow()
                             db.calls.insert_one(session_log)
                             print("📦 Session logged to MongoDB.")
