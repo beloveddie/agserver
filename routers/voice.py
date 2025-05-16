@@ -268,7 +268,6 @@ async def handle_media_stream(websocket: WebSocket):
                                     except Exception as e:
                                         print(f"⚠️ Failed to save session log: {e}")
 
-
                                     # ✅ Now gracefully shutdown
                                     exit_signal["stop"] = True
                                     await openai_ws.send(json.dumps({"type": "session.close"}))
