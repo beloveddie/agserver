@@ -110,7 +110,7 @@ async def handle_media_stream(websocket: WebSocket):
             nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio
 
             from services.escalation_service import check_if_escalation_needed, route_to_expert
-            from services.twilio_service import send_sms_to_expert
+            from services.twilio_service import send_sms_to_expert, send_sms_to_user
             from utils.language_utils import detect_language
 
             user_transcript = ""
@@ -195,6 +195,10 @@ async def handle_media_stream(websocket: WebSocket):
                                         user_phone=caller,
                                         user_language=user_language
                                     )
+
+                                    # Send SMS to user about expert routing
+                                    user_sms_message = f"Thank you for your question. We've connected you with {expert['name']}, who will contact you shortly to help with your farming query."
+                                    send_sms_to_user(caller, user_sms_message)
 
                                     confirmation_text = get_escalation_confirmation(user_language, expert["name"])
                                     

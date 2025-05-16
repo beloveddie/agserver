@@ -47,3 +47,25 @@ def send_sms_to_expert(expert: dict, user_question: str, user_phone: str, user_l
         print(f"✅ SMS sent to expert {expert['name']} at {expert['phone']}")
     except Exception as e:
         print(f"❌ Failed to send SMS to expert: {e}")
+
+def send_sms_to_user(user_phone: str, message: str):
+    """Send an SMS to a user."""
+    try:
+        twilio_client.messages.create(
+            to=user_phone,
+            from_=TWILIO_PHONE,
+            body=message
+        )
+
+        # ✅ Log to MongoDB (sms_logs)
+        db.sms_logs.insert_one({
+            "to": user_phone,
+            "message": message,
+            "timestamp": datetime.utcnow(),
+            "status": "sent",
+            "direction": "outbound"
+        })
+        print(f"📬 SMS to user {user_phone} logged to MongoDB.")
+        print(f"✅ SMS sent to user at {user_phone}")
+    except Exception as e:
+        print(f"❌ Failed to send SMS to user: {e}")
