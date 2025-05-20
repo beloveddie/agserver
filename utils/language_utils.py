@@ -1,20 +1,42 @@
 # utils/language_utils.py
 
-import re
+from services.openai_service import client
 
 def detect_language(text: str) -> str:
-    """Rudimentary language detector based on keywords."""
-    text = text.lower()
-
-    # Igbo examples
-    igbo_keywords = ["akwa", "ahia", "ụzọ", "anyị", "mma", "nna", "anyị", "ụtụtụ"]
-    if any(word in text for word in igbo_keywords):
-        return "Igbo"
-
-    # Pidgin examples
-    pidgin_keywords = ["wetin", "dey", "abeg", "una", "go fit", "make we", "waka", "na him", "no worry"]
-    if any(word in text for word in pidgin_keywords):
-        return "Pidgin"
-
-    # Default fallback
-    return "English"
+    """Detect the language of the input text using GPT-4o-mini.
+    Returns one of: "ENGLISH", "PIDGIN ENGLISH", or "IGBO"
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a language detection system. Your task is to determine if the given text is in ENGLISH, PIDGIN ENGLISH, or IGBO.
+                    Rules:
+                    1. Return ONLY one of these exact strings: "ENGLISH", "PIDGIN ENGLISH", or "IGBO"
+                    2. PIDGIN ENGLISH includes Nigerian Pidgin with words like 'wetin', 'dey', 'abeg', 'una', etc.
+                    3. IGBO includes Igbo language text with words like 'akwa', 'ahia', 'ụzọ', 'anyị', etc.
+                    4. If unsure, default to "ENGLISH"
+                    5. Do not include any explanation or additional text in your response"""
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ],
+            temperature=0.1,  # Low temperature for consistent results
+            max_tokens=10  # We only need a short response
+        )
+        
+        detected_language = response.choices[0].message.content.strip().upper()
+        
+        # Ensure we only return one of our three valid options
+        if detected_language not in ["ENGLISH", "PIDGIN ENGLISH", "IGBO"]:
+            return "ENGLISH"  # Default to English if we get an unexpected response
+            
+        return detected_language
+        
+    except Exception as e:
+        print(f"⚠️ Error in language detection: {e}")
+        return "ENGLISH"  # Default to English on error

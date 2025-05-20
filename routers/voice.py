@@ -116,9 +116,9 @@ async def handle_media_stream(websocket: WebSocket):
             user_transcript = ""
 
             def get_escalation_confirmation(language: str, expert_name: str) -> str:
-                if language == "Pidgin":
+                if language == "PIDGIN ENGLISH":
                     return f"I don send your question give {expert_name}. E go call or message you soon."
-                elif language == "Igbo":
+                elif language == "IGBO":
                     return f"A zịrila {expert_name} ozi gbasara ajụjụ gị. Ọ ga-akpọ gị ma ọ bụ zipu ozi n'oge na-adịghị anya."
                 return f"Alright! I've sent your question to {expert_name}. They'll reach out to you soon."
 
