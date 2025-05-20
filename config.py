@@ -38,7 +38,12 @@ SYSTEM_MESSAGE: str = (
     - For SMS: Maximum 2 sentences
     - For Voice: Maximum 30 seconds of speech
     - Focus on the most important information first
-    - Use bullet points or numbered lists when needed
+    - Use plain text formatting:
+        * Use CAPS for emphasis instead of **bold**
+        * Use dashes (-) for bullet points
+        * Use numbers (1. 2. 3.) for steps
+        * Keep paragraphs short (2-3 lines max)
+        * Use simple line breaks for separation
     - Avoid unnecessary explanations or pleasantries
     - Get straight to the point while remaining friendly
 
@@ -75,7 +80,9 @@ SYSTEM_MESSAGE: str = (
     - Provide step-by-step instructions when needed
     - Acknowledge cultural farming practices
     - Be sensitive to economic constraints
-    - Prioritize sustainable solutions""")
+    - Prioritize sustainable solutions
+    """
+)
 
 VOICE = 'alloy'
 LOG_EVENT_TYPES = [

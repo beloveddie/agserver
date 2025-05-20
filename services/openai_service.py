@@ -96,9 +96,36 @@ def get_chat_response(user_message: str, user_language: str = "ENGLISH") -> str:
     """
     # Add language-specific instructions to the system message
     language_instructions = {
-        "ENGLISH": "Respond in clear, professional English.",
-        "PIDGIN ENGLISH": "Respond in Nigerian Pidgin English, using common phrases like 'wetin', 'dey', 'abeg', 'una', etc.",
-        "IGBO": "Respond in Igbo language, using proper Igbo grammar and vocabulary."
+        "ENGLISH": """
+        Respond in clear, professional English.
+        FORMATTING RULES:
+        - Use plain text only, no markdown
+        - Use CAPS for emphasis instead of **bold**
+        - Use dashes (-) for bullet points
+        - Keep paragraphs short (2-3 lines max)
+        - Use numbers (1. 2. 3.) for steps
+        - Use simple line breaks for separation
+        """,
+        "PIDGIN ENGLISH": """
+        Respond in Nigerian Pidgin English, using common phrases like 'wetin', 'dey', 'abeg', 'una', etc.
+        FORMATTING RULES:
+        - Use plain text only, no markdown
+        - Use CAPS for emphasis instead of **bold**
+        - Use dashes (-) for bullet points
+        - Keep paragraphs short (2-3 lines max)
+        - Use numbers (1. 2. 3.) for steps
+        - Use simple line breaks for separation
+        """,
+        "IGBO": """
+        Respond in Igbo language, using proper Igbo grammar and vocabulary.
+        FORMATTING RULES:
+        - Use plain text only, no markdown
+        - Use CAPS for emphasis instead of **bold**
+        - Use dashes (-) for bullet points
+        - Keep paragraphs short (2-3 lines max)
+        - Use numbers (1. 2. 3.) for steps
+        - Use simple line breaks for separation
+        """
     }
     
     language_instruction = language_instructions.get(user_language, language_instructions["ENGLISH"])
