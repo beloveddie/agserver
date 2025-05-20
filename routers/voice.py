@@ -48,12 +48,15 @@ async def handle_media_stream(websocket: WebSocket):
     await websocket.accept()
 
     session_log = {
-    "caller": caller,
-    "started_at": datetime.utcnow(),
-    "escalated": False}
-
+        "caller": caller,
+        "started_at": datetime.utcnow(),
+        "escalated": False
+    }
 
     exit_signal = {"stop": False}  # ✅ Shared flag for graceful shutdown
+
+    # Initialize with default language
+    user_language = "English"
 
     async with websockets.connect(
         'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
@@ -62,7 +65,7 @@ async def handle_media_stream(websocket: WebSocket):
             "OpenAI-Beta": "realtime=v1"
         }
     ) as openai_ws:
-        await initialize_session(openai_ws)
+        await initialize_session(openai_ws, user_language)
 
         # Session state
         stream_sid = None
@@ -72,7 +75,7 @@ async def handle_media_stream(websocket: WebSocket):
         response_start_timestamp_twilio = None
 
         async def receive_from_twilio():
-            nonlocal stream_sid, latest_media_timestamp
+            nonlocal stream_sid, latest_media_timestamp, user_language
             try:
                 while not exit_signal["stop"]:
                     try:
@@ -107,7 +110,7 @@ async def handle_media_stream(websocket: WebSocket):
                 print("📴 receive_from_twilio finished cleanly.")
 
         async def send_to_twilio():
-            nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio
+            nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio, user_language
 
             from services.escalation_service import check_if_escalation_needed, route_to_expert
             from services.twilio_service import send_sms_to_expert, send_sms_to_user
@@ -131,7 +134,14 @@ async def handle_media_stream(websocket: WebSocket):
                         for block in content_blocks:
                             if block.get("type") == "input_text":
                                 user_transcript = block["text"]
+                                # Detect language from user's first message
+                                if not user_language or user_language == "English":
+                                    user_language = detect_language(user_transcript)
+                                    print(f"🈯 Detected language: {user_language}")
+                                    # Update session with new language
+                                    await initialize_session(openai_ws, user_language)
                                 session_log["user_transcript"] = user_transcript
+                                session_log["language"] = user_language
                                 print(f"🎙️ User said: {user_transcript}")
 
                     if response['type'] in LOG_EVENT_TYPES:
@@ -174,8 +184,7 @@ async def handle_media_stream(websocket: WebSocket):
 
                         if check_if_escalation_needed(initial_ai_reply):
                             print("🚨 Escalation needed.")
-                            user_language = detect_language(user_transcript)
-                            expert = route_to_expert(user_transcript, user_language)
+                            expert = route_to_expert(initial_ai_reply, user_language)
 
                             if expert:
                                 print(f"👨🏾‍🌾 Notifying expert: {expert['name']}")
@@ -191,7 +200,7 @@ async def handle_media_stream(websocket: WebSocket):
                                 try:
                                     send_sms_to_expert(
                                         expert=expert,
-                                        user_question=user_transcript,
+                                        user_question=initial_ai_reply,
                                         user_phone=caller,
                                         user_language=user_language
                                     )

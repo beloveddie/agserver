@@ -20,7 +20,7 @@ async def sms_incoming(request: Request, From: str = Form(...), Body: str = Form
     print(f"🈯 Detected language: {user_language}")
 
     # Use OpenAI to get a response
-    reply = get_chat_response(Body)
+    reply = get_chat_response(Body, user_language)
     print(f"🤖 Assistant reply: {reply}")
 
     # Initialize SMS log
