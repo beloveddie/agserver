@@ -53,7 +53,7 @@ async def send_initial_conversation_item(openai_ws):
 def get_chat_response(user_message: str) -> str:
     """Get a plain text response from GPT-4o (used for SMS)."""
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-mini",
         messages=[
             {"role": "developer", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": user_message}
