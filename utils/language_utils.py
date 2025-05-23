@@ -30,6 +30,7 @@ def detect_language(text: str) -> str:
         )
         
         detected_language = response.choices[0].message.content.strip().upper()
+        print(f"🔊 Detected language: {detected_language}")
         
         # Ensure we only return one of our three valid options
         if detected_language not in ["ENGLISH", "PIDGIN ENGLISH", "IGBO"]:
