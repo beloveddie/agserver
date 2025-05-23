@@ -7,9 +7,13 @@ def get_available_expert(language: str = None):
         query = {"available": True}
         experts = list(db.experts.find(query))
 
+        # Convert language to uppercase for case-insensitive matching
+        if language:
+            language = language.upper()
+
         fallback = None
         for expert in experts:
-            if language and language in expert.get("languages", []):
+            if language and language in [lang.upper() for lang in expert.get("languages", [])]:
                 return expert
             if fallback is None:
                 fallback = expert

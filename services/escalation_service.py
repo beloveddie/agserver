@@ -54,10 +54,13 @@ def check_if_escalation_needed(ai_response: str = "", user_message: str = "") ->
 
 
 def route_to_expert(user_message: str, user_language: str) -> dict:
+    # Convert language to uppercase for case-insensitive matching
+    user_language = user_language.upper()
+    
     # In future: match based on crop, region, etc.
     expert = get_available_expert(language=user_language)
     # log the expert that was matched to the user query
-    if expert and user_language not in expert["languages"]:
+    if expert and user_language not in [lang.upper() for lang in expert["languages"]]:
         print(f"⚠️ No expert available for '{user_language}', falling back to: {expert['name']}")
 
     if expert:
